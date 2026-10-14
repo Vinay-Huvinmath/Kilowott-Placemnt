@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id             String          @id @default(cuid())
+  wooCustomerId  Int             @unique
+  name           String
+  email          String          @unique
+  phone          String?
+  city           String?
+  segment        String          @default("New")
+  healthScore    Int             @default(50)
+  createdAt      DateTime        @default(now())
+  orders         Order[]
+  communications Communication[]
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  wooOrderId  Int         @unique
+  customerId  String
+  customer    Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  totalAmount Float
+  status      String
+  orderDate   DateTime
+  createdAt   DateTime    @default(now())
+  items       OrderItem[]
+}
+
+model OrderItem {
+  id          String @id @default(cuid())
+  orderId     String
+  order       Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productName String
+  quantity    Int
+  price       Float
+}
+
+model Communication {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  type       String   // email | whatsapp | note
+  subject    String?
+  message    String
+  status     String   @default("sent")
+  source     String   @default("manual") // manual | workflow | ai
+  sentAt     DateTime @default(now())
+}
+
+model Workflow {
+  id        String        @id @default(cuid())
+  name      String
+  trigger   String        // order_created | order_delivered | became_at_risk
+  delayDays Int           @default(0)
+  subject   String
+  message   String
+  active    Boolean       @default(true)
+  lastRunAt DateTime?
+  createdAt DateTime      @default(now())
+  jobs      WorkflowJob[]
+}
+
+model WorkflowJob {
+  id           String   @id @default(cuid())
+  workflowId   String
+  workflow     Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  customerId   String
+  orderId      String?
+  scheduledFor DateTime
+  executed     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
